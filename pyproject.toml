@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "drunken-agy"
+name = "drunken-team"
 version = "1.6.0"
-description = "Drunken AGY Inn gateway and dashboard utilities"
+description = "Drunken Team Inn gateway and dashboard utilities"
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
@@ -24,8 +24,9 @@ drunken-setup = "scripts.setup_env:main"
 drunken-dashboard = "scripts.serve_dashboard:main"
 drunken-listen = "scripts.discord_listener:main"
 drunken-register = "scripts.register_project:main"
+drunken-mcp = "scripts.discord_mcp_server:main"
 
 
 [tool.setuptools]
-packages = ["scripts", "drunken_agy", "drunken_agy.services", "drunken_agy.routes"]
-package-dir = {"drunken_agy" = "src/drunken_agy"}
+packages = ["scripts", "drunken_team", "drunken_team.services", "drunken_team.routes"]
+package-dir = {"drunken_team" = "src/drunken_team"}
