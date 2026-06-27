@@ -23,5 +23,5 @@ drunken-register = "scripts.register_project:main"
 drunken-mcp = "drunken_agy.mcp.discord_mcp:main"
 
 
-[tool.setuptools]
-packages = ["scripts"]
+[tool.setuptools.packages.find]
+where = ["src"]
