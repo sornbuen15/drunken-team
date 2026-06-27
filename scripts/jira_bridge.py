@@ -181,6 +181,41 @@ def transition_issue(config, issue_key, target_status):
     make_request(url, method="POST", payload=payload, email=config['jira_email'], token=config['jira_token'])
     print(json.dumps({"ok": True, "message": f"Successfully transitioned {issue_key} to '{target_status}'"}))
 
+def get_board_id(config):
+    if 'board_id' in config:
+        return config['board_id']
+    url = f"{config['jira_url']}/rest/agile/1.0/board?projectKeyOrId={config['project_key']}"
+    res = make_request(url, email=config['jira_email'], token=config['jira_token'])
+    values = res.get('values', [])
+    if values:
+        config['board_id'] = values[0]['id']
+        return values[0]['id']
+    return None
+
+def get_backlog_issues(config):
+    board_id = get_board_id(config)
+    if not board_id:
+        return []
+    url = f"{config['jira_url']}/rest/agile/1.0/board/{board_id}/backlog"
+    res = make_request(url, email=config['jira_email'], token=config['jira_token'])
+    return minify_issues(res.get('issues', []))
+
+def move_to_board(config, issue_key):
+    board_id = get_board_id(config)
+    if not board_id:
+        print("Error: Could not find board ID for project", file=sys.stderr)
+        sys.exit(1)
+    url = f"{config['jira_url']}/rest/agile/1.0/board/{board_id}/issue"
+    payload = {"issues": [issue_key]}
+    make_request(url, method="POST", payload=payload, email=config['jira_email'], token=config['jira_token'])
+    print(json.dumps({"ok": True, "message": f"Successfully moved {issue_key} to active board."}))
+
+def move_to_backlog(config, issue_key):
+    url = f"{config['jira_url']}/rest/agile/1.0/backlog/issue"
+    payload = {"issues": [issue_key]}
+    make_request(url, method="POST", payload=payload, email=config['jira_email'], token=config['jira_token'])
+    print(json.dumps({"ok": True, "message": f"Successfully moved {issue_key} to backlog."}))
+
 def create_issue(config, summary, description):
     if isinstance(description, str):
         paragraphs = []
@@ -275,7 +310,12 @@ def main():
     if action == "get-todo":
         jql = f"project = {jira_config['project_key']} AND status = 'To Do' ORDER BY priority DESC, created ASC"
         issues = search_issues(jira_config, jql)
-        print(json.dumps(issues, indent=2))
+        
+        backlog_issues = get_backlog_issues(jira_config)
+        backlog_keys = {i['key'] for i in backlog_issues}
+        
+        todo_on_board = [i for i in issues if i['key'] not in backlog_keys]
+        print(json.dumps(todo_on_board, indent=2))
         
     elif action == "get-in-progress":
         jql = f"project = {jira_config['project_key']} AND status = 'In Progress'"
@@ -283,9 +323,20 @@ def main():
         print(json.dumps(issues, indent=2))
         
     elif action == "get-backlog":
-        jql = f"project = {jira_config['project_key']} AND status = 'Backlog' ORDER BY priority DESC"
-        issues = search_issues(jira_config, jql)
-        print(json.dumps(issues, indent=2))
+        backlog_issues = get_backlog_issues(jira_config)
+        print(json.dumps(backlog_issues, indent=2))
+        
+    elif action == "move-to-board":
+        if len(sys.argv) < 3:
+            print("Usage: jira_bridge.py move-to-board <issue_key>", file=sys.stderr)
+            sys.exit(1)
+        move_to_board(jira_config, sys.argv[2])
+        
+    elif action == "move-to-backlog":
+        if len(sys.argv) < 3:
+            print("Usage: jira_bridge.py move-to-backlog <issue_key>", file=sys.stderr)
+            sys.exit(1)
+        move_to_backlog(jira_config, sys.argv[2])
         
     elif action == "transition":
         if len(sys.argv) < 4:
